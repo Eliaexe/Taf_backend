@@ -1,19 +1,33 @@
 import express from 'express';
-import requestHellowork from './requests/hellowork.js';
+import cors from 'cors';
+
 import requestTalent from './requests/talent.js';
-// import requestJooble from './requests/jooble.js';
-import { requestMeteojob } from './requests/meteojob.js';
+import requestMonster from './requests/monster.js';
+import requestHellowork from './requests/hellowork.js';
 
 import { standardizeObjects } from './utils/dataStandardizer.js';
+import sortPertinentsJobs from './utils/mostPertinent.js';
 
 const app = express();
-const port = 3001;
+const corsOptions = {
+  origin: '*',
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  credentials: true,
+};
 
+app.use(cors(corsOptions));
+const port = 3001;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.post('/', async (req, res) => {
+  console.log('Nuova ricerca avviata');
+
   const { jobTitle, jobLocation } = req.body;
+
+  let totalRequests = []
 
   // Imposta gli headers per lo streaming
   res.writeHead(200, {
@@ -21,47 +35,45 @@ app.post('/', async (req, res) => {
     'Transfer-Encoding': 'chunked'
   });
 
-  // Funzione per inviare i dati al client
-  const sendData = (name, data) => {
-    console.log(data);
-    
-    let dataToSend = standardizeObjects(name, data);
-        
-    res.write(JSON.stringify(dataToSend) + '\n');
-  };
+  // Funzione per inviare i dati parziali
+  const sendPartialResponse = (name, response) => {
+    if (response == []) {
+      res.write([])
+    } else {
 
-  // Array di promesse per tutte le richieste
-  const requests = [
-    { name: 'hellowork', promise: requestHellowork(jobTitle, jobLocation) },
-    { name: 'talent', promise: requestTalent(jobTitle, jobLocation) },
-    // { name: 'Jooble', promise: requestJooble(jobTitle, jobLocation) },
-    // { name: 'Meteojob', promise: requestMeteojob(jobTitle, jobLocation) }
-  ];
-
-  // Funzione per gestire ogni richiesta individualmente
-  const handleRequest = async (request) => {
-    try {
-      const data = await request.promise;
-      if (data !== undefined || null) {
-        sendData(request.name, data);
-      }
-    } catch (error) {
-      console.error(`Error fetching ${request.name}:`, error);
-      sendData(request.name, { error: error.message });
+      let formattedData = standardizeObjects(name, response);
+      totalRequests.push(...formattedData)
+      let sortedJobs = sortPertinentsJobs(formattedData, jobTitle, jobLocation);
+      res.write(JSON.stringify(sortedJobs));
     }
   };
 
-  // Avvia tutte le richieste in parallelo
-  for (const request of requests) {
-    handleRequest(request);
+  // Gestione indipendente delle richieste
+  handleRequest('talent', () => requestTalent(jobTitle, jobLocation));
+  handleRequest('monster', () => requestMonster(jobTitle, jobLocation));
+  handleRequest('hellowork', () => requestHellowork(jobTitle, jobLocation));
+
+  // Funzione per gestire le promesse e inviare i dati
+  async function handleRequest(name, requestFn) {
+    try {
+      const response = await requestFn();
+      console.log(`${name} risposta ricevuta`);
+      sendPartialResponse(name, response);
+    } catch (error) {
+      console.error(`Errore nella richiesta ${name}:`, error);
+      sendPartialResponse(name, { error: 'Si è verificato un errore' });
+    }
   }
 
-  // Non chiudere la connessione fino a quando tutte le richieste non sono state completate
-  await Promise.all(requests.map(r => r.promise));
 
-  // Chiudi la connessione
-  res.end();
+  // Non chiudere la risposta finché non sono terminate tutte le richieste
+  res.on('close', () => {
+    console.log(totalRequests);
+    console.log('La connessione è stata chiusa dal client.');
+    res.end();
+  });
 });
+
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);

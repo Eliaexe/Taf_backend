@@ -4,9 +4,9 @@ import fetch from "node-fetch";
 import { setParams, delay } from "../utils/commonFunction.js";
 
 let page = 1;
-let result = [];
 
 export default async function requestTalent(job, location) {
+  
   const options = {
     method: "GET",
     headers: {
@@ -32,6 +32,7 @@ export default async function requestTalent(job, location) {
     },
   };
 
+  let result = [];
   let baseUrl = `https://fr.talent.com`;
 
   try {
@@ -74,18 +75,18 @@ export default async function requestTalent(job, location) {
         : "";
       const fullUrl = link ? new URL(link, baseUrl).href : "";
 
-      let description = fullUrl ? await takeDataFromPost(fullUrl) : "No description";
-
+      let description = fullUrl ? await takeDataFromPost(fullUrl) : "No description";    
+            
       result.push({
         id,
         cardPosition,
         title,
         companyName,
-        location: jobLocation,
+        location: jobLocation, 
         day,
         link: fullUrl,
         description,
-      });
+      });      
     });
 
     const pagination = document.querySelector(".pagination");
@@ -99,13 +100,12 @@ export default async function requestTalent(job, location) {
       page++;
       await delay(500);
       await requestTalent(job, location);
-    } else {
-      console.log('talent ok');
-      return result;
     }
   } catch (err) {
     console.error("Error during fetching job data:", err);
   }
+
+  return result
 }
 
 async function takeDataFromPost(link) {

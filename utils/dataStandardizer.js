@@ -1,7 +1,3 @@
-import fs from "fs/promises";
-import path from "path";
-import { stringify } from "querystring";
-
 const jobObject = {
   id: "",
   original_site_id: "",
@@ -46,12 +42,9 @@ const jobObject = {
   notes: [""],
 };
 
-const dataFolderPath = path.join(
-  new URL("../", import.meta.url).pathname,
-  "data/raw_data"
-);
-
 export function standardizeObjects(site, data) {
+  if (!data) { return []; }  
+  
   const standardizedData = data.map((job) => {
     if (site === "figarojobs") {
       const standardizedJob = Object.assign({}, jobObject);
@@ -70,7 +63,6 @@ export function standardizeObjects(site, data) {
     } else if (site === "hellowork") {
       const standardizedJob = Object.assign({}, jobObject);
 
-      // Popola le informazioni specifiche dell'oggetto standard
       standardizedJob.original_site_id = job?.Id;
       standardizedJob.title = job?.OfferTitle;
       standardizedJob.company.name = job?.CompanyName;
@@ -87,25 +79,20 @@ export function standardizeObjects(site, data) {
       }
       let description = job?.Description.replace(/\n/g, " ");
 
-      // Estrai le responsabilità dall'oggetto data solo se esiste la proprietà `Description`
       standardizedJob.job_offer_body = description;
 
-      // Se le proprietà relative al salario sono definite, popolale
       if (job?.DisplayedSalary) {
         standardizedJob.salary.min = job?.DisplayedSalary.split(" - ")[0];
         standardizedJob.salary.max = job?.DisplayedSalary.split(" - ")[1];
         standardizedJob.salary.currency = job?.DisplayedSalary.split(" ")[3];
       }
 
-      // Estrai la data di scadenza dell'applicazione solo se è definita la proprietà `PublishDate`
       standardizedJob.application_deadline = job?.PublishDate
         ? new Date(job.PublishDate).toISOString().split("T")[0]
         : null;
 
-      // Aggiungi `Tags` e `SeoTags` all'array `notes`
       const notes = [];
 
-      // Aggiungi `Tags` all'array `notes`
       if (job?.Tags) {
         job.Tags.forEach((tag) => {
           notes.push(tag.Label);
@@ -114,18 +101,12 @@ export function standardizeObjects(site, data) {
           notes.push(tag);
         });
       }
-
-      // Aggiungi `SeoTags` all'array `notes`
       if (job?.SeoTags) {
         job.SeoTags.forEach((seoTag) => {
           notes.push(seoTag.Label);
         });
       }
-
-      // Assegna l'array `notes` all'oggetto `standardizedJob`
       standardizedJob.notes = notes;
-
-      // Restituisci l'oggetto standardizzato
       return standardizedJob;
     } else if (site == "indeed") {
       const standardizedJob = Object.assign({}, jobObject);
@@ -182,15 +163,12 @@ export function standardizeObjects(site, data) {
       standardizedJob.original_website = site;
       standardizedJob.job_offer_body = job?.description?.split("\n")[0];
 
-      // Assegna le etichette e i tag ai notes
       const notes = [];
 
-      // Aggiungi etichette
       if (job?.labels) {
         notes.push(job?.labels);
       }
 
-      // Aggiungi etichette SEO
       if (job?.metaTags) {
         notes.push(...job?.metaTags.map((tag) => tag.Label));
       }
@@ -249,32 +227,4 @@ export function standardizeObjects(site, data) {
     }
   });
   return standardizedData;
-}
-
-export async function combineDataFromFiles() {
-  try {
-    const files = await fs.readdir(dataFolderPath);
-    const lastElements = [];
-
-    await Promise.all(
-      files
-        .filter((file) => path.extname(file) === ".json")
-        .map(async (file) => {
-          const filePath = path.join(dataFolderPath, file);
-          const nameSeparator = filePath.split("_");
-          const nameSeparator2 = nameSeparator[nameSeparator.length - 1];
-          const originWebsite = nameSeparator2.split(".")[0];
-          const fileData = await fs.readFile(filePath, "utf8");
-          const jsonData = JSON.parse(fileData);
-          const standardizedData = standardizeObjects(originWebsite, jsonData);
-          lastElements.push(standardizedData);
-        })
-    );
-
-    const result = lastElements.flat();
-    return result;
-  } catch (err) {
-    console.error("Errore nella lettura della cartella:", err);
-    throw err;
-  }
 }
