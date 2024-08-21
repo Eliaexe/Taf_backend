@@ -7,6 +7,7 @@ import requestHellowork from './requests/hellowork.js';
 
 import { standardizeObjects } from './utils/dataStandardizer.js';
 import sortPertinentsJobs from './utils/mostPertinent.js';
+import scrapeIndeedJobs from './scrapers/indeed.js';
 
 const app = express();
 const corsOptions = {
@@ -52,6 +53,7 @@ app.post('/', async (req, res) => {
   handleRequest('talent', () => requestTalent(jobTitle, jobLocation));
   handleRequest('monster', () => requestMonster(jobTitle, jobLocation));
   handleRequest('hellowork', () => requestHellowork(jobTitle, jobLocation));
+  handleRequest('indeed', ()  => scrapeIndeedJobs(jobTitle, jobLocation));
 
   // Funzione per gestire le promesse e inviare i dati
   async function handleRequest(name, requestFn) {
