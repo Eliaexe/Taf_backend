@@ -8,6 +8,7 @@ import requestHellowork from './requests/hellowork.js';
 import { standardizeObjects } from './utils/dataStandardizer.js';
 import sortPertinentsJobs from './utils/mostPertinent.js';
 import scrapeIndeedJobs from './scrapers/indeed.js';
+import scrapeLinkcedinJobs from './scrapers/linkedin.js';
 
 const app = express();
 const corsOptions = {
@@ -76,6 +77,10 @@ app.post('/', async (req, res) => {
   });
 });
 
+app.get('/scrape', async (req ,res ) => {
+  let result = await scrapeLinkcedinJobs('alternance developpeur front end react', 'lille')
+  res.json({result})
+})
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
