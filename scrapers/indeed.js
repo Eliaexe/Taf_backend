@@ -15,8 +15,8 @@ export default async function scrapeIndeedJobs(job, location) {
         args: [
             "--disable-setuid-sandbox",
             "--no-sandbox",
-            "--single-process",
-            "--no-zygote",
+            // "--single-process",
+            // "--no-zygote",
         ],
         headless: false,
         ignoreHTTPSErrors: true,
