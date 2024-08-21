@@ -161,7 +161,7 @@ export default async function scrapeLinkcedinJobs(job, location) {
       "--single-process",
       "--no-zygote",
     ],
-    headless: false,
+    headless: true,
     ignoreHTTPSErrors: true,
     executablePath:
       process.env.NODE_ENV === 'production' ?
