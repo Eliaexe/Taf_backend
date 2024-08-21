@@ -12,18 +12,18 @@ dotenv.config();
 
 export default async function scrapeIndeedJobs(job, location) {
     const browser = await puppeteer.launch({
-        args: [
-            "--disable-setuid-sandbox",
-            "--no-sandbox",
-            "--single-process",
-            "--no-zygote",
-        ],
+        // args: [
+        //     "--disable-setuid-sandbox",
+        //     "--no-sandbox",
+        //     "--single-process",
+        //     "--no-zygote",
+        // ],
         headless: false,
         ignoreHTTPSErrors: true,
         executablePath:
             process.env.NODE_ENV === 'production' ?
                 process.env.PUPPETEER_EXECUTABLE_PATH :
-                puppeteer.executablePath
+                puppeteer.executablePath()
     });
 
     const page = await browser.newPage();

@@ -43,8 +43,7 @@ const jobObject = {
 };
 
 export function standardizeObjects(site, data) {
-  if (!data) { return []; }  
-  console.log(typeof data)
+  if (!data || data.error) { return []; }  
   
   const standardizedData = data?.map((job) => {
     if (site === "figarojobs") {
