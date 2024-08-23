@@ -50,7 +50,9 @@ export default async function requestMonster(job, location) {
         sameDataCount = 0;
       }
 
-      result.push(...data.jobResults);
+      if (data.jobResults != undefined || null || '' ) {
+        result.push(...data.jobResults);  
+      }
 
       prevData = data.jobResults;
       offset += 50;

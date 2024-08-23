@@ -4,11 +4,10 @@ import cors from 'cors';
 import requestTalent from './requests/talent.js';
 import requestMonster from './requests/monster.js';
 import requestHellowork from './requests/hellowork.js';
+import requestLinkedin from './requests/linkedin.js';
 
 import { standardizeObjects } from './utils/dataStandardizer.js';
 import sortPertinentsJobs from './utils/mostPertinent.js';
-import scrapeIndeedJobs from './scrapers/indeed.js';
-import scrapeLinkcedinJobs from './scrapers/linkedin.js';
 
 const app = express();
 const corsOptions = {
@@ -23,6 +22,8 @@ app.use(cors(corsOptions));
 const port = 3001;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(express.static('files'));
 
 app.post('/', async (req, res) => {
   console.log('Nuova ricerca avviata');
@@ -42,19 +43,12 @@ app.post('/', async (req, res) => {
     if (response == []) {
       res.write([])
     } else {
-
       let formattedData = standardizeObjects(name, response);
       totalRequests.push(...formattedData)
       let sortedJobs = sortPertinentsJobs(formattedData, jobTitle, jobLocation);
       res.write(JSON.stringify(sortedJobs));
     }
   };
-
-  // Gestione indipendente delle richieste
-  handleRequest('talent', () => requestTalent(jobTitle, jobLocation));
-  handleRequest('monster', () => requestMonster(jobTitle, jobLocation));
-  handleRequest('hellowork', () => requestHellowork(jobTitle, jobLocation));
-  handleRequest('indeed', ()  => scrapeIndeedJobs(jobTitle, jobLocation));
 
   // Funzione per gestire le promesse e inviare i dati
   async function handleRequest(name, requestFn) {
@@ -68,6 +62,11 @@ app.post('/', async (req, res) => {
     }
   }
 
+  // Gestione indipendente delle richieste
+  handleRequest('talent', () => requestTalent(jobTitle, jobLocation));
+  handleRequest('monster', () => requestMonster(jobTitle, jobLocation));
+  handleRequest('hellowork', () => requestHellowork(jobTitle, jobLocation));
+  handleRequest('linkedin', () => requestLinkedin(jobTitle, jobLocation));
 
   // Non chiudere la risposta finché non sono terminate tutte le richieste
   res.on('close', () => {
@@ -76,11 +75,6 @@ app.post('/', async (req, res) => {
     res.end();
   });
 });
-
-app.get('/scrape', async (req ,res ) => {
-  let result = await scrapeLinkcedinJobs('alternance developpeur front end react', 'lille')
-  res.json({result})
-})
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);

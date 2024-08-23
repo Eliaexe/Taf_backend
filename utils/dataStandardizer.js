@@ -43,23 +43,23 @@ const jobObject = {
 };
 
 export function standardizeObjects(site, data) {
-  if (!data || data.error) { return []; }  
+  if (!data || data.error || data == undefined || data == null) { return []; }  
   
-  const standardizedData = data?.map((job) => {
+  const standardizedData = data.map((job) => {
     if (site === "figarojobs") {
-      const standardizedJob = Object.assign({}, jobObject);
+      // const standardizedJob = Object.assign({}, jobObject);
 
-      standardizedJob.original_site_id = job?.id;
-      standardizedJob.original_job_url =
-        "https://emploi.lefigaro.fr" + job?.link;
-      standardizedJob.title = job?.title;
-      standardizedJob.company.name = job?.companyName;
-      standardizedJob.date_posted = job?.publicationDate;
-      standardizedJob.notes = job?.otherInfo;
-      standardizedJob.job_offer_body = job?.description;
-      standardizedJob.original_website = site;
+      // standardizedJob.original_site_id = job?.id;
+      // standardizedJob.original_job_url =
+      //   "https://emploi.lefigaro.fr" + job?.link;
+      // standardizedJob.title = job?.title;
+      // standardizedJob.company.name = job?.companyName;
+      // standardizedJob.date_posted = job?.publicationDate;
+      // standardizedJob.notes = job?.otherInfo;
+      // standardizedJob.job_offer_body = job?.description;
+      // standardizedJob.original_website = site;
 
-      return standardizedJob;
+      // return standardizedJob;
     } else if (site === "hellowork") {
       const standardizedJob = Object.assign({}, jobObject);
 
@@ -109,94 +109,94 @@ export function standardizeObjects(site, data) {
       standardizedJob.notes = notes;
       return standardizedJob;
     } else if (site == "indeed") {
-      const standardizedJob = Object.assign({}, jobObject);
-      standardizedJob.original_site_id = job?.id;
-      standardizedJob.title = job?.title;
-      standardizedJob.original_job_url = job.link;
-      standardizedJob.company.name = job?.company?.name;
-      standardizedJob.company.location = job?.company?.location;
-      standardizedJob.salary.min = job?.salary;
-      standardizedJob.notes = [job?.jk, job?.empn];
-      // standardizedJob.date_posted = job?.PublishDate;
-      standardizedJob.original_website = site;
-      standardizedJob.job_offer_body = job?.job_offer_body.split("\n")[0];
+      // const standardizedJob = Object.assign({}, jobObject);
+      // standardizedJob.original_site_id = job?.id;
+      // standardizedJob.title = job?.title;
+      // standardizedJob.original_job_url = job.link;
+      // standardizedJob.company.name = job?.company?.name;
+      // standardizedJob.company.location = job?.company?.location;
+      // standardizedJob.salary.min = job?.salary;
+      // standardizedJob.notes = [job?.jk, job?.empn];
+      // // standardizedJob.date_posted = job?.PublishDate;
+      // standardizedJob.original_website = site;
+      // standardizedJob.job_offer_body = job?.job_offer_body.split("\n")[0];
 
-      return standardizedJob;
+      // return standardizedJob;
     } else if (site == "jooble") {
-      const standardizedJob = Object.assign({}, jobObject);
-      standardizedJob.original_job_url = job.url;
-      standardizedJob.original_site_id = job?.uid;
-      standardizedJob.date_posted = job?.dateCaption;
-      standardizedJob.job_offer_body = job?.fullContent
-        ?.replace(/<[^>]*>/g, "")
-        .replace(/&#[0-9]+;/g, (match) =>
-          String.fromCharCode(match.match(/[0-9]+/))
-        )
-        .split("\n")
-        .filter((line) => line.trim().startsWith("-"))
-        .map((line) => line.trim().substring(1));
-      standardizedJob.title = job?.position;
-      standardizedJob.company.name = job?.company?.name;
-      standardizedJob.company.location = job?.location?.name;
-      standardizedJob.notes = [];
-      if (job?.highlightTags) {
-        standardizedJob.notes = standardizedJob.notes.concat(job.highlightTags);
-      }
-      if (job?.tags) {
-        standardizedJob.notes = standardizedJob.notes.concat(job.tags);
-      }
-      standardizedJob.notes = standardizedJob.notes.filter(Boolean);
-      standardizedJob.original_website = site;
+      // const standardizedJob = Object.assign({}, jobObject);
+      // standardizedJob.original_job_url = job.url;
+      // standardizedJob.original_site_id = job?.uid;
+      // standardizedJob.date_posted = job?.dateCaption;
+      // standardizedJob.job_offer_body = job?.fullContent
+      //   ?.replace(/<[^>]*>/g, "")
+      //   .replace(/&#[0-9]+;/g, (match) =>
+      //     String.fromCharCode(match.match(/[0-9]+/))
+      //   )
+      //   .split("\n")
+      //   .filter((line) => line.trim().startsWith("-"))
+      //   .map((line) => line.trim().substring(1));
+      // standardizedJob.title = job?.position;
+      // standardizedJob.company.name = job?.company?.name;
+      // standardizedJob.company.location = job?.location?.name;
+      // standardizedJob.notes = [];
+      // if (job?.highlightTags) {
+      //   standardizedJob.notes = standardizedJob.notes.concat(job.highlightTags);
+      // }
+      // if (job?.tags) {
+      //   standardizedJob.notes = standardizedJob.notes.concat(job.tags);
+      // }
+      // standardizedJob.notes = standardizedJob.notes.filter(Boolean);
+      // standardizedJob.original_website = site;
 
-      return standardizedJob;
+      // return standardizedJob;
     } else if (site == "meteojob") {
-      const standardizedJob = Object.assign({}, jobObject);
-      standardizedJob.original_site_id = job?.id;
-      standardizedJob.title = job?.title;
-      standardizedJob.original_job_url = job.url.jobOffer;
-      standardizedJob.company.name = job?.company?.name;
-      standardizedJob.company.location = job?.locality;
-      standardizedJob.salary.min = job?.salary?.from;
-      standardizedJob.salary.max = job?.salary?.to;
-      standardizedJob.salary.currency = job?.salary?.currency;
-      standardizedJob.date_posted = job?.publicationDate;
-      standardizedJob.original_website = site;
-      standardizedJob.job_offer_body = job?.description?.split("\n")[0];
+      // const standardizedJob = Object.assign({}, jobObject);
+      // standardizedJob.original_site_id = job?.id;
+      // standardizedJob.title = job?.title;
+      // standardizedJob.original_job_url = job.url.jobOffer;
+      // standardizedJob.company.name = job?.company?.name;
+      // standardizedJob.company.location = job?.locality;
+      // standardizedJob.salary.min = job?.salary?.from;
+      // standardizedJob.salary.max = job?.salary?.to;
+      // standardizedJob.salary.currency = job?.salary?.currency;
+      // standardizedJob.date_posted = job?.publicationDate;
+      // standardizedJob.original_website = site;
+      // standardizedJob.job_offer_body = job?.description?.split("\n")[0];
 
-      const notes = [];
+      // const notes = [];
 
-      if (job?.labels) {
-        notes.push(job?.labels);
-      }
+      // if (job?.labels) {
+      //   notes.push(job?.labels);
+      // }
 
-      if (job?.metaTags) {
-        notes.push(...job?.metaTags.map((tag) => tag.Label));
-      }
+      // if (job?.metaTags) {
+      //   notes.push(...job?.metaTags.map((tag) => tag.Label));
+      // }
 
-      standardizedJob.notes = notes;
+      // standardizedJob.notes = notes;
 
-      return standardizedJob;
+      // return standardizedJob;
     } else if (site == "linkedin") {
       const standardizedJob = Object.assign({}, jobObject);
-      standardizedJob.original_job_url = job.link;
+      standardizedJob.original_job_url = job.url;
       standardizedJob.title = job?.title;
       standardizedJob.company.name = job?.company;
       standardizedJob.company.location = job?.location;
-      standardizedJob.date_posted = job?.publication;
-      standardizedJob.job_offer_body = job?.offerBody;
+      standardizedJob.date_posted = job?.date;
+      standardizedJob.job_offer_body = job?.description;
       return standardizedJob;
     } else if (site == "wttj") {
-      const standardizedJob = Object.assign({}, jobObject);
-      standardizedJob.title = job?.title;
-      standardizedJob.original_job_url = job.link;
-      standardizedJob.company.name = job?.company?.name;
-      standardizedJob.company.location = job?.company?.location;
-      standardizedJob.job_offer_body = job?.job_offer_body;
-      standardizedJob.date_posted = job?.job_offer_publication;
-      standardizedJob.notes = job?.job_offer_body_tags;
-      standardizedJob.original_website = "Welcome to the jungle";
+      // const standardizedJob = Object.assign({}, jobObject);
+      // standardizedJob.title = job?.title;
+      // standardizedJob.original_job_url = job.link;
+      // standardizedJob.company.name = job?.company?.name;
+      // standardizedJob.company.location = job?.company?.location;
+      // standardizedJob.job_offer_body = job?.job_offer_body;
+      // standardizedJob.date_posted = job?.job_offer_publication;
+      // standardizedJob.notes = job?.job_offer_body_tags;
+      // standardizedJob.original_website = "Welcome to the jungle";
 
-      return standardizedJob;
+      // return standardizedJob;
     } else if (site == "talent") {
       const standardizedJob = Object.assign({}, jobObject);
       standardizedJob.original_site_id = job?.id;
