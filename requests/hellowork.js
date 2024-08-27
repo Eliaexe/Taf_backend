@@ -1,5 +1,6 @@
 import fetch from "node-fetch";
 import { setParams, delay } from "../utils/commonFunction.js";
+import { standardizeObjects } from "../utils/dataStandardizer.js";
 
 export default async function requestHellowork(job, location) {
   let results = [];
@@ -54,7 +55,7 @@ export default async function requestHellowork(job, location) {
       await delay(1000); 
       await fetchData(page + 1); 
     } else {
-      return results
+      return standardizeObjects('hellowork', results)
     }
   }
   

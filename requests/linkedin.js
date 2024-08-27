@@ -1,5 +1,6 @@
 import { JSDOM } from "jsdom";
 import { delay } from "../utils/commonFunction.js";
+import { standardizeObjects } from "../utils/dataStandardizer.js";
 
 let options = {
     method: 'GET',
@@ -43,11 +44,12 @@ async function getDescription(url) {
     const dom = new JSDOM(html);
     const document = dom.window.document;
     try {
-        const description = document.getElementsByClassName('show-more-less-html__markup show-more-less-html__markup--clamp-after-5 relative overflow-hidden')[0].innerHTML.trim()
+        const description = document.getElementsByClassName('show-more-less-html__markup')[0].innerHTML
+        // console.log(description);
+        
         return description
     } catch (error) {
-        console.log('Error description not found')
-
+        // console.log('Error description not found', document.getElementsByClassName('show-more-less-html__markup').value)
         return 'Error description not found'
     }
 
@@ -66,6 +68,5 @@ export default async function requestLinkedin(title, location) {
         }
         results.push(...jobs)
     }
-    
-    return results
+    return standardizeObjects('linkedin', results)
 }

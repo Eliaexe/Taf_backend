@@ -2,6 +2,7 @@ import { JSDOM } from "jsdom";
 import fetch from "node-fetch";
 
 import { setParams, delay } from "../utils/commonFunction.js";
+import { standardizeObjects } from "../utils/dataStandardizer.js";
 
 let page = 1;
 
@@ -105,7 +106,7 @@ export default async function requestTalent(job, location) {
     console.error("Error during fetching job data:", err);
   }
 
-  return result
+  return standardizeObjects(result) 
 }
 
 async function takeDataFromPost(link) {

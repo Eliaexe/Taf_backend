@@ -43,7 +43,8 @@ const jobObject = {
 };
 
 export function standardizeObjects(site, data) {
-  if (!data || data.error || data == undefined || data == null) { return []; }  
+  if (!data || data.error || data == undefined || data == null) { return []; }
+  console.log('start');
   
   const standardizedData = data.map((job) => {
     if (site === "figarojobs") {
@@ -198,26 +199,62 @@ export function standardizeObjects(site, data) {
 
       // return standardizedJob;
     } else if (site == "talent") {
+
+      const dayFormatted = (str) => {
+        let date = new Date();
+        let newDate;
+      
+        if (str.includes("Il y a plus de 30 jours")) {
+          // Setta la data a un mese fa
+          newDate = new Date(date.setMonth(date.getMonth() - 1));
+        } else if (str.includes("Il y a")) {
+          // Trova il numero nella stringa e sottrai i giorni dalla data corrente
+          let regex = /\d+/g;
+          let matches = str.match(regex);
+          if (matches) {
+            let daysAgo = parseInt(matches[0], 10);
+            newDate = new Date(date.setDate(date.getDate() - daysAgo));
+          } else {
+            return date; // Ritorna la data corrente se non trova un numero
+          }
+        } else {
+          return date; // Ritorna la data corrente se la stringa non soddisfa nessuna condizione
+        }
+      
+        return newDate;
+      }  
+
       const standardizedJob = Object.assign({}, jobObject);
       standardizedJob.original_site_id = job?.id;
       standardizedJob.title = job?.title;
       standardizedJob.company.name = job?.companyName;
       standardizedJob.company.location = job?.location;
-      standardizedJob.date_posted = job?.day;
-      standardizedJob.job_offer_body = job?.description;
+      standardizedJob.date_posted = dayFormatted(job?.day);
+      standardizedJob.job_offer_body = job?.description.replace(/\n/g, '<br>').trim();
+      standardizedJob.original_job_url = job?.link
       standardizedJob.original_website = site;
       return standardizedJob;
-    } else if(site == "monster") {
+    } else if (site == "monster") {
+      standardizedJob.salary.min = job.salary.minValue
+      standardizedJob.salary.max = job.salary.maxValue
+      standardizedJob.salary.currency = job.currency
+      console.log("policyDecisions", job[0].policyDecisions.skillsDecision, job[0].policyDecisions.jobLocationTypeDecision);
+      console.log("enrichments", job[0].enrichments);
+
       standardizedJob.original_site_id = job?.jobId;
-      standardizedJob.date_posted = job?.jobPosting?.url;
+      standardizedJob.date_posted = job?.jobPosting?.datePosted;
       standardizedJob.application_deadline = job?.jobPosting?.validThrough
       standardizedJob.title = job?.jobPosting?.title;
       standardizedJob.company.name = job?.jobPosting?.hiringOrganization?.name;
       standardizedJob.company.location = job?.jobPosting?.jobLocation[0].address.addressLocality;
-      standardizedJob.original_job_url = job?.jobPosting?.link;
+      standardizedJob.company.industry = job?.jobPosting?.industry
+      standardizedJob.type_of_contract + job?.employmentType[0];
+      standardizedJob.original_job_url = job?.jobPosting?.normalizedJobPosting?.url;
       standardizedJob.role_in_the_company = job?.normalizedJobPosting?.occupationalCategory
+      standardizedJob.language = job[0].enrichments.language.languadeCode
+      standardizedJob.job_offer_body = job[0].normalizedJobPosting.description
 
-// searcing for big description
+      // searcing for big description
 
       standardizedJob.languages.push(job?.enrichments?.language?.languageCode)
       standardizedJob.original_website = site;

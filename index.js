@@ -1,17 +1,17 @@
 import express from 'express';
 import cors from 'cors';
-import mongoose from 'mongoose'; // Importa Mongoose
-import dotenv from 'dotenv'; // Importa dotenv
-import connectDB from './.db.js';// Importa la funzione di connessione al DB
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import connectDB from './.db.js';
 import requestTalent from './requests/talent.js';
-import requestMonster from './requests/monster.js';
+// import requestMonster from './requests/monster.js';
 import requestHellowork from './requests/hellowork.js';
 import requestLinkedin from './requests/linkedin.js';
 import { standardizeObjects } from './utils/dataStandardizer.js';
 import sortPertinentsJobs from './utils/mostPertinent.js';
 import Job from './models/Job.js';
-dotenv.config();
 
+dotenv.config();
 connectDB();
 
 const app = express();
@@ -24,33 +24,15 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-const port = 3001;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 app.use(express.static('files'));
 
-// Route per caricare più offerte di lavoro
-app.post('/load-more', async (req, res) => {
-    const { jobTitle, jobLocation, viewedJobs } = req.body;
-
-    try {
-        // Filtra le offerte che l'utente ha già visto
-        const unseenJobs = await Job.find({
-            _id: { $nin: viewedJobs }
-        }).limit(10);
-
-        res.status(200).json(unseenJobs);
-    } catch (error) {
-        console.error(`Errore nella richiesta di lavori:`, error);
-        res.status(500).json({ error: 'Si è verificato un errore durante la richiesta di lavori.' });
-    }
-});
+const port = process.env.PORT || 3001;
 
 // Funzione per salvare l'offerta di lavoro solo se non esiste già
 const saveJobIfNotExists = async (jobData) => {
   try {
-    console.log('Salvando job:', jobData);
     const existingJob = await Job.findOne({ original_site_id: jobData.original_site_id });
     if (!existingJob) {
       const newJob = new Job(jobData);
@@ -64,69 +46,108 @@ const saveJobIfNotExists = async (jobData) => {
   }
 };
 
+// Funzione per eseguire la ricerca e il salvataggio in background
+const performSearchAndSave = async (jobTitle, jobLocation) => {
+  try {
+    let getOffersFn = [
+      requestTalent(jobTitle, jobLocation),
+      requestLinkedin(jobTitle, jobLocation),
+      requestHellowork(jobTitle, jobLocation),
+      // requestMonster(jobTitle, jobLocation)
+    ];
+
+    const results = await Promise.all(getOffersFn);
+    const allJobs = results.flat();
+    const standardizedJobs = standardizeObjects(allJobs);
+
+    for (const job of standardizedJobs) {
+      await saveJobIfNotExists(job);
+    }
+
+    console.log('Ricerca e salvataggio completati in background');
+  } catch (error) {
+    console.error('Errore durante la ricerca e il salvataggio in background:', error);
+  }
+};
 
 // Route per la ricerca iniziale
 app.post('/', async (req, res) => {
-  const { jobTitle, jobLocation } = req.body;
-  const testRequests = async () => {
-    console.log('Start', jobTitle, jobLocation)
-    try {
-      const talentJobs = await requestTalent(jobTitle, jobLocation);
-      // const monsterJobs = await requestMonster('Developer', 'bretigny sur orge');
-      // const helloworkJobs = await requestHellowork('Developer', 'bretigny sur orge');
-      // const linkedinJobs = await requestLinkedin('Developer', 'bretigny sur orge');
-  
-      console.log('Talent:', talentJobs);
-      // console.log('Monster:', monsterJobs);
-      // console.log('Hellowork:', helloworkJobs);
-      // console.log('Linkedin:', linkedinJobs);
-    } catch (error) {
-      console.error('Errore nelle richieste:', error);
+  const { jobTitle, jobLocation, page = 1 } = req.body;
+  const pageSize = 10;
+  const skip = (page - 1) * pageSize;
+
+  try {
+    // Avvia la ricerca e il salvataggio in background
+    await performSearchAndSave(jobTitle, jobLocation);
+
+    // Esegui la ricerca nel database
+    const query = {
+      $and: [
+        { title: { $regex: jobTitle, $options: 'i' } },
+        { location: { $regex: jobLocation, $options: 'i' } }
+      ]
+    };
+
+    const totalJobs = await Job.countDocuments(query);
+    const jobs = await Job.find(query)
+      .sort({ date: -1 })
+      .skip(skip)
+      .limit(pageSize);
+
+    if (jobs.length === 0) {
+      return res.status(404).json({ message: 'Nessuna offerta di lavoro trovata per questa ricerca.' });
     }
-  };
 
-  let data = await testRequests()
-  
-  // await testRequests();
-  res.status(200).json(JSON.stringify(data));
-  
-  // console.log('Nuova ricerca avviata');
+    res.status(200).json({
+      jobs,
+      currentPage: page,
+      totalPages: Math.ceil(totalJobs / pageSize),
+      totalJobs
+    });
+  } catch (error) {
+    console.error('Errore durante la ricerca dei lavori:', error);
+    res.status(500).json({ error: 'Si è verificato un errore durante la ricerca dei lavori.' });
+  }
+});
 
-  // const { jobTitle, jobLocation } = req.body;
+// Route per caricare più offerte di lavoro
+app.post('/load-more', async (req, res) => {
+  const { jobTitle, jobLocation, viewedJobs, page = 1 } = req.body;
+  const pageSize = 10;
+  const skip = (page - 1) * pageSize;
 
-  // if (!jobTitle || !jobLocation) {
-  //   return res.status(400).json({ error: 'jobTitle e jobLocation sono richiesti.' });
-  // }
+  try {
+    const query = {
+      $and: [
+        { title: { $regex: jobTitle, $options: 'i' } },
+        { location: { $regex: jobLocation, $options: 'i' } },
+        { _id: { $nin: viewedJobs } }
+      ]
+    };
 
-  // try {
-  //   const requestFunctions = [
-  //     requestTalent(jobTitle, jobLocation),
-  //     requestMonster(jobTitle, jobLocation),
-  //     requestHellowork(jobTitle, jobLocation),
-  //     requestLinkedin(jobTitle, jobLocation)
-  //   ];
+    const totalJobs = await Job.countDocuments(query);
+    const jobs = await Job.find(query)
+      .sort({ date: -1 })
+      .skip(skip)
+      .limit(pageSize);
 
-  //   const responses = await Promise.all(requestFunctions);
-  //   const jobs = responses.flat();
+    if (jobs.length === 0) {
+      return res.status(404).json({ message: 'Nessuna nuova offerta di lavoro disponibile.' });
+    }
 
-  //   console.log('Jobs ricevuti:', jobs);
-
-  //   // Salva i lavori nel database solo se non esistono già
-  //   await Promise.all(jobs.map(saveJobIfNotExists));
-
-  //   // Ordina i risultati per pertinenza e prendi i primi 10
-  //   const sortedJobs = sortPertinentsJobs(jobs, jobTitle, jobLocation);
-  //   const top10Jobs = sortedJobs.slice(0, 10);
-
-  //   console.log('Top 10 Jobs:', top10Jobs);
-
-  //   res.status(200).json(top10Jobs);
-  // } catch (error) {
-  //   console.error('Errore durante l\'elaborazione delle richieste:', error);
-  //   res.status(500).json({ error: 'Si è verificato un errore durante l\'elaborazione delle richieste.' });
-  // }
+    res.status(200).json({
+      jobs,
+      currentPage: page,
+      totalPages: Math.ceil(totalJobs / pageSize),
+      totalJobs
+    });
+  } catch (error) {
+    console.error('Errore durante il caricamento di più lavori:', error);
+    res.status(500).json({ error: 'Si è verificato un errore durante il caricamento di più lavori.' });
+  }
 });
 
 app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+  console.clear();
+  console.log(`Server in ascolto sulla porta ${port}`);
 });
