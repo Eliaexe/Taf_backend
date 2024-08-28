@@ -2,9 +2,9 @@ import fetch from "node-fetch";
 import { setParams, delay } from "../utils/commonFunction.js";
 import { standardizeObjects } from "../utils/dataStandardizer.js";
 
-export default async function requestHellowork(job, location) {
+export default async function requestHellowork(job, location, onDataChunk) {
   let results = [];
-  
+
   async function fetchData(page) {
     const options = {
       method: "GET",
@@ -49,16 +49,15 @@ export default async function requestHellowork(job, location) {
 
     const responseData = await response.json();
     const newResults = responseData.Results;
-    results.push(...newResults);    
-
-    if (newResults.length > 0) {
+    
+    if (newResults && newResults.length > 0) {
+      results.push(...newResults);
+      standardizeObjects('hellowork', newResults)
       await delay(1000); 
-      await fetchData(page + 1); 
-    } else {
-      return standardizeObjects('hellowork', results)
+      await fetchData(page + 1); // Continua al prossimo blocco di dati
     }
   }
-  
+
   await fetchData(1);
-  return results
+  return results;
 }

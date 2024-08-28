@@ -2,14 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import natural from 'natural';
 import connectDB from './.db.js';
-import requestTalent from './requests/talent.js';
-// import requestMonster from './requests/monster.js';
-import requestHellowork from './requests/hellowork.js';
-import requestLinkedin from './requests/linkedin.js';
-import { standardizeObjects } from './utils/dataStandardizer.js';
-import sortPertinentsJobs from './utils/mostPertinent.js';
+import { updateJobsWithDistance } from './utils/geocoding.js';
 import Job from './models/Job.js';
+import { calculateDistance } from './utils/distanceCalculator.js';
+
+const { WordTokenizer, TfIdf } = natural;
+const tokenizer = new WordTokenizer();
+const tfidf = new TfIdf();
 
 dotenv.config();
 connectDB();
@@ -30,120 +31,127 @@ app.use(express.static('files'));
 
 const port = process.env.PORT || 3001;
 
-// Funzione per salvare l'offerta di lavoro solo se non esiste già
-const saveJobIfNotExists = async (jobData) => {
-  try {
-    const existingJob = await Job.findOne({ original_site_id: jobData.original_site_id });
-    if (!existingJob) {
-      const newJob = new Job(jobData);
-      await newJob.save();
-      console.log('Job salvato:', jobData.original_site_id);
-    } else {
-      console.log('Job già esistente:', jobData.original_site_id);
-    }
-  } catch (error) {
-    console.error('Errore durante il salvataggio del lavoro:', error);
-  }
-};
-
-// Funzione per eseguire la ricerca e il salvataggio in background
 const performSearchAndSave = async (jobTitle, jobLocation) => {
   try {
-    let getOffersFn = [
-      requestTalent(jobTitle, jobLocation),
-      requestLinkedin(jobTitle, jobLocation),
-      requestHellowork(jobTitle, jobLocation),
-      // requestMonster(jobTitle, jobLocation)
-    ];
-
-    const results = await Promise.all(getOffersFn);
-    const allJobs = results.flat();
-    const standardizedJobs = standardizeObjects(allJobs);
-
-    for (const job of standardizedJobs) {
-      await saveJobIfNotExists(job);
-    }
-
-    console.log('Ricerca e salvataggio completati in background');
+    // Placeholder for background job search and save
   } catch (error) {
     console.error('Errore durante la ricerca e il salvataggio in background:', error);
   }
 };
 
-// Route per la ricerca iniziale
-app.post('/', async (req, res) => {
+function cosineSimilarity(vec1, vec2) {
+  const dotProduct = Object.keys(vec1).reduce((sum, key) => sum + vec1[key] * (vec2[key] || 0), 0);
+  const mag1 = Math.sqrt(Object.values(vec1).reduce((sum, val) => sum + val * val, 0));
+  const mag2 = Math.sqrt(Object.values(vec2).reduce((sum, val) => sum + val * val, 0));
+  return dotProduct / (mag1 * mag2);
+}
+
+app.post('/api/jobs/search', async (req, res) => {
   const { jobTitle, jobLocation, page = 1 } = req.body;
   const pageSize = 10;
   const skip = (page - 1) * pageSize;
 
   try {
-    // Avvia la ricerca e il salvataggio in background
-    await performSearchAndSave(jobTitle, jobLocation);
-
-    // Esegui la ricerca nel database
-    const query = {
-      $and: [
-        { title: { $regex: jobTitle, $options: 'i' } },
-        { location: { $regex: jobLocation, $options: 'i' } }
-      ]
-    };
-
-    const totalJobs = await Job.countDocuments(query);
-    const jobs = await Job.find(query)
-      .sort({ date: -1 })
-      .skip(skip)
-      .limit(pageSize);
-
-    if (jobs.length === 0) {
-      return res.status(404).json({ message: 'Nessuna offerta di lavoro trovata per questa ricerca.' });
-    }
-
-    res.status(200).json({
-      jobs,
-      currentPage: page,
-      totalPages: Math.ceil(totalJobs / pageSize),
-      totalJobs
+    performSearchAndSave(jobTitle, jobLocation).catch(error => {
+      console.error('Errore in performSearchAndSave:', error);
     });
+
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    const referenceTokens = tokenizer.tokenize(jobTitle.toLowerCase());
+    tfidf.addDocument(referenceTokens);
+
+    const allJobs = await Job.aggregate([
+      {
+        $match: {
+          $text: {
+            $search: jobTitle,
+            $caseSensitive: false,
+            $diacriticSensitive: false
+          }
+        }
+      },
+      {
+        $addFields: {
+          score: { $meta: "textScore" }
+        }
+      },
+      {
+        $match: {
+          score: { $gt: 0.5 }
+        }
+      },
+      {
+        $sort: { score: -1 }
+      },
+      {
+        $limit: 100 // Fai in modo che la query restituisca un numero maggiore di lavori per il successivo filtraggio
+      }
+    ]);
+
+    const jobsWithSimilarity = allJobs.map(job => {
+      const jobTokens = tokenizer.tokenize(job.title.toLowerCase());
+      tfidf.addDocument(jobTokens);
+
+      const referenceVector = {};
+      const jobVector = {};
+
+      referenceTokens.forEach(token => {
+        referenceVector[token] = tfidf.tfidf(token, 0);
+      });
+
+      jobTokens.forEach(token => {
+        jobVector[token] = tfidf.tfidf(token, 1);
+      });
+
+      const similarity = cosineSimilarity(referenceVector, jobVector);
+
+      return { ...job.toObject(), similarity }; // Convert to plain object
+    });
+
+    const filteredJobs = jobsWithSimilarity.map(async job => {
+      if (!job.company.location || !job.company.location.lat || !job.company.location.lon) {
+        const { latitude, longitude } = await updateJobsWithDistance(resolvedJobs, coordinates);
+(job.company.location);
+        job.company.location = { lat: latitude, lon: longitude };
+        await Job.updateOne({ _id: job._id }, { $set: { 'company.location': job.company.location } });
+      }
+      return job;
+    });
+
+    const resolvedJobs = await Promise.all(filteredJobs);
+    let coordinates = await getCoordinates(jobLocation);
+
+    const jobsWithDistance = resolvedJobs.map(job => {
+      const jobLat = parseFloat(job.company.location.lat || 0);
+      const jobLon = parseFloat(job.company.location.lon || 0);
+      const userLat = parseFloat(coordinates.latitude);
+      const userLon = parseFloat(coordinates.longitude);
+      const distance = calculateDistance(userLat, userLon, jobLat, jobLon);
+
+      return { ...job, distance };
+    });
+
+    const sortedJobs = jobsWithDistance
+      .sort((a, b) => a.distance - b.distance || b.similarity - a.similarity);
+
+    const paginatedJobs = sortedJobs.slice(skip, skip + pageSize);
+
+    if (paginatedJobs.length > 0) {
+      const totalJobs = sortedJobs.length;
+
+      res.status(200).json({
+        jobs: paginatedJobs,
+        currentPage: page,
+        totalPages: Math.ceil(totalJobs / pageSize),
+        totalJobs,
+      });
+    } else {
+      res.status(404).json({ message: 'Nessuna offerta di lavoro trovata per questa ricerca.' });
+    }
   } catch (error) {
     console.error('Errore durante la ricerca dei lavori:', error);
     res.status(500).json({ error: 'Si è verificato un errore durante la ricerca dei lavori.' });
-  }
-});
-
-// Route per caricare più offerte di lavoro
-app.post('/load-more', async (req, res) => {
-  const { jobTitle, jobLocation, viewedJobs, page = 1 } = req.body;
-  const pageSize = 10;
-  const skip = (page - 1) * pageSize;
-
-  try {
-    const query = {
-      $and: [
-        { title: { $regex: jobTitle, $options: 'i' } },
-        { location: { $regex: jobLocation, $options: 'i' } },
-        { _id: { $nin: viewedJobs } }
-      ]
-    };
-
-    const totalJobs = await Job.countDocuments(query);
-    const jobs = await Job.find(query)
-      .sort({ date: -1 })
-      .skip(skip)
-      .limit(pageSize);
-
-    if (jobs.length === 0) {
-      return res.status(404).json({ message: 'Nessuna nuova offerta di lavoro disponibile.' });
-    }
-
-    res.status(200).json({
-      jobs,
-      currentPage: page,
-      totalPages: Math.ceil(totalJobs / pageSize),
-      totalJobs
-    });
-  } catch (error) {
-    console.error('Errore durante il caricamento di più lavori:', error);
-    res.status(500).json({ error: 'Si è verificato un errore durante il caricamento di più lavori.' });
   }
 });
 

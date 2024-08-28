@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 
+// Definisci lo schema per l'offerta di lavoro
 const jobSchema = new mongoose.Schema({
     id: String,
     original_site_id: String,
@@ -42,10 +43,9 @@ const jobSchema = new mongoose.Schema({
     level: String,
     languages: [String],
     notes: [String],
-    latitude: String, // Nuovo campo per la latitudine
-    longitude: String // Nuovo campo per la longitudine
 });
 
+// Crea un modello Mongoose basato sullo schema
 const Job = mongoose.model('Job', jobSchema);
 
 export default Job;

@@ -3,19 +3,19 @@
 
 ## 📋 Core Features
 
-### 1. 💾 Job Data Storage
-- Save job listings from 4 different job sites
-- Standardize data across all sources
-- Expand Job object to include all available API data (e.g., Monster API)
-  - Include application deadline date
+### 1. 💾 Job Data Storage ❌ ✅
+- Save job listings from 4 different job sites [2 of 4] ❎
+- Standardize data across all sources ✅
+- Expand Job object to include all available API data (e.g., Monster API) ✅
+  - Include application deadline date✅
 
 ### 2. 🔍 Search Functionality
-- Implement specific search using user-provided keywords
+- Implement specific search using user-provided keywords ❎
 - Return results in batches of 10, considering previously viewed listings
 
-### 3. 🔄 Background Processing
-- Implement background process for saving job listings
-- Ensure immediate data availability for users
+### 3. 🔄 Background Processing✅
+- Implement background process for saving job listings ✅
+- Ensure immediate data availability for users ✅
 
 ### 4. 🚫 No Results Handling
 - Develop a strategy for scenarios with no available job offers matching the search criteria
@@ -25,25 +25,47 @@
 ### 1. 💾 Job Data Model
 ```javascript
 const Job = {
-  id: String,
-  title: String,
-  company: String,
-  location: String,
-  description: String,
-  salary: {
-    min: Number,
-    max: Number,
-    currency: String
+  id: "",
+  original_site_id: "",
+  title: "",
+  company: {
+    name: "",
+    location: "",
+    description: "",
+    industry: "",
+    website: "",
+    contact: {
+      email: "",
+      phone: "",
+    },
   },
-  postDate: Date,
-  applicationDeadline: Date,
-  requirements: [String],
-  benefits: [String],
-  jobType: String, // Full-time, Part-time, Contract, etc.
-  source: String, // Which job site this listing came from
-  sourceUrl: String,
-  viewed: Boolean,
-  applied: Boolean
+  skills_required: {
+    hard_skills: [""],
+    soft_skills: [""],
+  },
+  experience: {
+    years_required: "",
+    education_required: "",
+  },
+  role_in_the_company: "",
+  type_of_contract: "",
+  remote_work: "",
+  job_offer_body: "",
+  benefits: [""],
+  responsibilities: [""],
+  application_deadline: "",
+  date_posted: "",
+  work_schedule: "",
+  salary: {
+    min: "",
+    max: "",
+    currency: "",
+  },
+  original_job_url: "",
+  original_website: "",
+  level: "",
+  languages: [""],
+  notes: [""],
 };
 ```
 
@@ -51,12 +73,12 @@ const Job = {
 ```javascript
 GET /api/jobs/search
 Query parameters:
-  - keywords: String (required)
-  - page: Number (default: 1)
-  - perPage: Number (default: 10)
-  - location: String
-  - jobType: String
-  - minSalary: Number
+  // - keywords: String (required)
+  // - page: Number (default: 1)
+  // - perPage: Number (default: 10)
+  - jobTitle: String
+  - jobLocation: String
+  // - minSalary: Number
 ```
 
 ### 3. 🔄 Background Job Saving Process
